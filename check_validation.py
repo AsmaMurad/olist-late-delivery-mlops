@@ -1,7 +1,6 @@
 from src.data_access import get_engine, build_ml_table
 from src.validation import validate_ml_table
 
-
 engine = get_engine()
 
 ml_table = build_ml_table(engine)

@@ -5,7 +5,6 @@ from sqlalchemy import create_engine
 import os
 from src.config import load_config
 
-
 logger = get_logger(__name__)
 
 
