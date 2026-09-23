@@ -1,0 +1,19 @@
+{
+    "_note": "This list was NOT saved by Notebook 6 (only feature_count=38 was saved in final_ensemble_configuration1.json). It was reconstructed by searching for each of the 54 known feature names inside the 3 saved XGBoost model files.",
+    "candidate_features": [
+      "num_number_of_items", "num_number_of_sellers", "num_total_product_weight",
+      "num_total_product_volume", "num_number_of_product_categories", "num_total_price",
+      "num_number_of_payments", "num_total_payment", "num_customer_seller_distance_km",
+      "num_customer_seller_same_state", "num_purchase_year", "num_purchase_month",
+      "num_purchase_dayofmonth", "num_is_holiday", "num_estimated_delivery_days",
+      "onehot_customer_state_AL", "onehot_customer_state_BA", "onehot_customer_state_CE",
+      "onehot_customer_state_DF", "onehot_customer_state_ES", "onehot_customer_state_GO",
+      "onehot_customer_state_MA", "onehot_customer_state_MG", "onehot_customer_state_MS",
+      "onehot_customer_state_MT", "onehot_customer_state_PA", "onehot_customer_state_PB",
+      "onehot_customer_state_PE", "onehot_customer_state_PI", "onehot_customer_state_PR",
+      "onehot_customer_state_RJ", "onehot_customer_state_RN", "onehot_customer_state_RS",
+      "onehot_customer_state_SC", "onehot_customer_state_SP",
+      "onehot_main_payment_type_boleto", "onehot_main_payment_type_credit_card",
+      "frequency_customer_city_frequency"
+    ]
+  }

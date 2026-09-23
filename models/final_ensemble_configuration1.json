@@ -1,0 +1,13 @@
+{
+    "model_type": "weighted_xgboost_ensemble",
+    "weights": {
+        "best_f1": 0.7,
+        "best_pr_auc": 0.2,
+        "weight_5_25": 0.1
+    },
+    "threshold": 0.53,
+    "feature_count": 38,
+    "validation_f1": 0.4061,
+    "validation_pr_auc": 0.344,
+    "validation_roc_auc": 0.8073
+}
