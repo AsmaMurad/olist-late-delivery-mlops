@@ -2,15 +2,25 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
 import json
+import time
 
 from src.features import create_features, select_raw_features
 from src.preprocess import load_preprocessor, transform_features
 from src.predict import LateDeliveryPredictor
+from src.logger import get_logger
+
+metrics = {
+    "total_requests": 0,
+    "total_errors": 0,
+    "total_latency_seconds": 0.0,
+}
+
 
 app = FastAPI(title="Late Delivery Prediction Service")
 
-# نحمّل الموديلات والـ preprocessor مرة وحدة بس، وقت بدء تشغيل السيرفر
-# (مش كل مرة يجي طلب — هيك أسرع بكتير)
+logger = get_logger(__name__)
+
+
 preprocessor = load_preprocessor("models/preprocessor1.joblib")
 predictor = LateDeliveryPredictor(
     "models/final_ensemble_configuration1.json", "models/candidate_features.json"
@@ -57,16 +67,59 @@ def model_info():
 
 @app.post("/predict")
 def predict(order: OrderInput):
-    df = pd.DataFrame([order.model_dump()])
+    start_time = time.time()
+    metrics["total_requests"] += 1
 
-    featured = create_features(df)
-    raw_features = select_raw_features(featured)
-    processed = transform_features(raw_features, preprocessor)
+    try:
+        df = pd.DataFrame([order.model_dump()])
 
-    probability, prediction = predictor.predict(processed)
+        featured = create_features(df)
+        raw_features = select_raw_features(featured)
+        processed = transform_features(raw_features, preprocessor)
+
+        probability, prediction = predictor.predict(processed)
+
+        latency = time.time() - start_time
+        metrics["total_latency_seconds"] += latency
+
+        logger.info(
+            f"Prediction request: input_items={order.number_of_items}, "
+            f"output={'late' if prediction[0] == 1 else 'on_time'}, "
+            f"probability={float(probability[0]):.3f}, "
+            f"latency={latency:.3f}s, "
+            f"model_version=1"
+        )
+
+        return {
+            "prediction": "late" if prediction[0] == 1 else "on_time",
+            "probability_late": float(probability[0]),
+            "model_version": "1",
+        }
+
+    except Exception as e:
+        metrics["total_errors"] += 1
+
+        latency = time.time() - start_time
+        metrics["total_latency_seconds"] += latency
+
+        logger.error(
+            f"Prediction failed: error={e}, "
+            f"latency={latency:.3f}s, "
+            f"model_version=1"
+        )
+
+        raise
+
+
+@app.get("/metrics")
+def get_metrics():
+    total = metrics["total_requests"]
+    avg_latency = metrics["total_latency_seconds"] / total if total > 0 else 0
+    error_rate = metrics["total_errors"] / total if total > 0 else 0
 
     return {
-        "prediction": "late" if prediction[0] == 1 else "on_time",
-        "probability_late": float(probability[0]),
-        "model_version": "1",
+        "total_requests": total,
+        "total_errors": metrics["total_errors"],
+        "error_rate": round(error_rate, 4),
+        "average_latency_seconds": round(avg_latency, 4),
     }
