@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 /artifacts
+
+logs/
+.pytest_cache/
+mlflow.db
+mlartifacts/
