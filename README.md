@@ -4,16 +4,18 @@ An end-to-end MLOps project for predicting whether an Olist Brazilian e-commerce
 
 ## Project Overview
 
-The project moves the machine learning workflow from notebooks to a production-oriented structure including data processing, validation, model registry, testing, API serving, containerization, CI/CD, and monitoring.
+The project transforms a notebook-based machine learning workflow into a production-oriented structure covering data processing, validation, model management, testing, API serving, containerization, CI/CD, and monitoring.
 
 ## Architecture
+
+### Training / Data Pipeline
 
 ```text
 PostgreSQL
     ↓
-data_access.py
+Data Access
     ↓
-ml_table
+ML Table
     ↓
 Great Expectations
     ↓
@@ -21,15 +23,23 @@ Feature Engineering
     ↓
 Saved Preprocessor
     ↓
+Model Training / MLflow
+```
+
+### Inference / Serving Pipeline
+
+```text
+API Request
+    ↓
+FastAPI
+    ↓
+Feature Processing
+    ↓
 MLflow Model Registry
     ↓
 Weighted XGBoost Ensemble
     ↓
-FastAPI
-    ↓
-Docker
-    ↓
-CI/CD + Monitoring
+Prediction + Probability
 ```
 
 ## Repository Structure
@@ -41,16 +51,17 @@ CI/CD + Monitoring
 ├── config/                 # Configuration files
 ├── data/                   # Data-related files
 ├── logs/                   # Runtime logs
-├── models/                 # Model configuration/artifacts used by the service
+├── models/                 # Model configuration used by the service
 ├── notebooks/              # Original development notebooks
 ├── src/                    # Reusable Python modules
 ├── tests/                  # Automated tests
 ├── .github/workflows/      # GitHub Actions CI workflow
 ├── requirements.txt        # Runtime dependencies
-├── requirements-dev.txt    # Development/test dependencies
-├── Dockerfile
-├── docker-compose.yml
-└── artifacts.dvc
+├── requirements-dev.txt    # Development and testing dependencies
+├── Dockerfile              # API image
+├── Dockerfile.mlflow       # MLflow image
+├── docker-compose.yml      # API + MLflow services
+└── artifacts.dvc           # DVC metadata
 ```
 
 ## Environment Setup
@@ -95,13 +106,13 @@ dvc pull
 dvc push
 ```
 
-The current local development setup uses a local DVC remote. A shared cloud/object-storage remote can be configured when collaborative data sharing is required.
+The current development environment uses a local DVC remote. This is suitable for the current local workflow, but a shared cloud/object-storage remote would be required for multi-machine collaboration.
 
 ## MLflow
 
-MLflow is used for experiment/model management and Model Registry.
+MLflow is used for experiment and model management and for the Model Registry.
 
-The FastAPI service loads the registered models using MLflow Model Registry URIs:
+The FastAPI service loads the registered ensemble models using MLflow Model Registry URIs:
 
 ```text
 models:/late_delivery_ensemble_best_f1/1
@@ -109,13 +120,17 @@ models:/late_delivery_ensemble_best_pr_auc/1
 models:/late_delivery_ensemble_weight_5_25/1
 ```
 
-The service therefore does not load the production models directly from the training notebooks.
+The production inference code therefore loads models through MLflow Model Registry rather than directly from the training notebooks.
 
 ## Running MLflow Locally
+
+For local development:
 
 ```bash
 mlflow server --host 127.0.0.1 --port 5000 --allowed-hosts "localhost:*,127.0.0.1:*"
 ```
+
+The Docker Compose setup uses a dedicated MLflow service with SQLite backend storage and local artifact storage.
 
 ## Running the API Locally
 
@@ -155,7 +170,7 @@ Returns:
 GET /model-info
 ```
 
-Returns model type, threshold, and feature count.
+Returns model configuration information such as model type, threshold, and feature count.
 
 ### Prediction
 
@@ -167,8 +182,8 @@ Returns:
 
 ```json
 {
-  "prediction": "late",
-  "probability_late": 0.62,
+  "prediction": "on_time",
+  "probability_late": 0.17497,
   "model_version": "1"
 }
 ```
@@ -179,7 +194,7 @@ Returns:
 GET /metrics
 ```
 
-Returns:
+Returns runtime metrics such as:
 
 ```json
 {
@@ -198,7 +213,14 @@ Run all tests:
 python -m pytest tests/ -v
 ```
 
-The current test suite covers data-access logic, feature engineering, model initialization, and data validation.
+The current test suite covers:
+
+* data-access logic
+* feature engineering
+* model initialization
+* data validation
+
+The current local test suite passes all 7 tests.
 
 ## Code Quality
 
@@ -223,11 +245,31 @@ Build the API image:
 docker build -t late-delivery-api .
 ```
 
-Run the complete local setup:
+## Docker Compose
+
+Run the API and MLflow services together:
 
 ```bash
 docker compose up --build
 ```
+
+The Compose setup provides:
+
+```text
+MLflow → port 5000
+API    → port 8000
+```
+
+MLflow uses:
+
+```text
+mlflow.db
+mlartifacts/
+```
+
+as local development storage.
+
+These local MLflow state files are intentionally not stored in Git. Therefore, the current Compose configuration is intended for the configured local development environment; a fully portable multi-machine deployment would require a shared MLflow backend and artifact store.
 
 ## CI/CD
 
@@ -245,7 +287,7 @@ pytest
 Docker build
 ```
 
-The latest completed CI run passed all stages.
+The latest completed CI workflow passed successfully.
 
 ## Monitoring
 
@@ -262,10 +304,17 @@ Prediction requests are also logged with prediction output, probability, latency
 
 The preprocessing pipeline is loaded from a saved artifact rather than refitted during inference.
 
-The final prediction uses the saved ensemble configuration, candidate feature list, model weights, and threshold.
+The final prediction uses the saved:
 
-The saved preprocessing artifact was created with scikit-learn 1.9.0, while the current runtime uses 1.9.1; this currently produces a warning and should be aligned in a future reproducibility cleanup.
+* ensemble configuration
+* candidate feature list
+* model weights
+* prediction threshold
+
+The saved preprocessing artifact was created with scikit-learn 1.9.0, while the current runtime uses 1.9.1. This currently produces an `InconsistentVersionWarning`; aligning the versions would be a future reproducibility cleanup.
+
+The current DVC remote and MLflow backend/artifact storage are local-development resources rather than shared remote infrastructure.
 
 ## Project Goal
 
-The goal of Task 3 is to transform the original notebook-based machine learning workflow into a reproducible, testable, deployable, and monitorable ML service.
+The goal of Task 3 is to transform the original notebook-based machine learning workflow into a modular, testable, deployable, and monitorable ML service.
